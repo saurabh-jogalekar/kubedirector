@@ -158,6 +158,7 @@ func (r *ReconcileKubeDirectorCluster) syncCluster(
 	}()
 	// Calculate md5check sum to generate unique hash for connection object
 	currentHash := calcConnectionsHash(&cr.Spec.Connections, cr.Namespace)
+	connectionsChanged := false
 
 	// We use a finalizer to maintain KubeDirector state consistency;
 	// e.g. app references and ClusterStatusGens.
@@ -214,6 +215,15 @@ func (r *ReconcileKubeDirectorCluster) syncCluster(
 		incremented := *cr.Status.SpecGenerationToProcess + int64(1)
 		cr.Status.SpecGenerationToProcess = &incremented
 		cr.Status.LastConnectionHash = currentHash
+		connectionsChanged = true
+
+		shared.LogInfo(
+			reqLogger,
+			cr,
+			shared.EventReasonCluster,
+			"IN THE LOOP",
+		)
+
 	}
 
 	memberServicesErr := syncMemberServices(reqLogger, cr, roles)
@@ -228,7 +238,7 @@ func (r *ReconcileKubeDirectorCluster) syncCluster(
 				reqLogger,
 				cr,
 				shared.EventReasonCluster,
-				"stable",
+				"stable - new",
 			)
 
 			amIBeingConnectedToThis := func(otherCluster kdv1.KubeDirectorCluster) bool {
@@ -328,7 +338,7 @@ func (r *ReconcileKubeDirectorCluster) syncCluster(
 		return configMetaErr
 	}
 
-	membersErr := syncMembers(reqLogger, cr, roles, configmetaGen)
+	membersErr := syncMembers(reqLogger, cr, roles, configmetaGen, connectionsChanged)
 	if membersErr != nil {
 		errLog("members", membersErr)
 		return membersErr

@@ -49,8 +49,30 @@ func syncMembers(
 	cr *kdv1.KubeDirectorCluster,
 	roles []*roleInfo,
 	configmetaGenerator func(string) string,
+	connectionsChanged bool,
 ) error {
 
+	shared.LogInfo(
+		reqLogger,
+		cr,
+		shared.EventReasonCluster,
+		fmt.Sprintf("syncMembers called, connections changed: %t", connectionsChanged),
+	)
+
+	if connectionsChanged {
+
+		for _, r := range roles {
+
+			shared.LogInfo(
+				reqLogger,
+				cr,
+				shared.EventReasonCluster,
+				fmt.Sprintf("Connections WILL BE changed for %s", r.roleSpec.Name),
+			)
+
+		}
+
+	}
 	// Update configmeta in current ready members if necessary. These may not
 	// all succeed if any members are down. We'll return early if we fail to
 	// update any ready members or if there are rebooting members that will
@@ -240,7 +262,15 @@ func handleReadyMembers(
 	configmetaGenerator func(string) string,
 ) {
 
+	shared.LogInfo(
+		reqLogger,
+		cr,
+		shared.EventReasonCluster,
+		"In handle ready members",
+	)
+
 	ready := role.membersByState[memberReady]
+
 	var wgReady sync.WaitGroup
 	wgReady.Add(len(ready))
 	for _, member := range ready {
@@ -280,6 +310,35 @@ func handleReadyMembers(
 				)
 				return
 			}
+
+			containerID := m.StateDetail.LastConfiguredContainer
+			cmd := fmt.Sprintf(appPrepConfigRunCmdTest, containerID)
+
+			shared.LogInfo(
+				reqLogger,
+				cr,
+				shared.EventReasonCluster,
+				fmt.Sprintf("Executing command %s", cmd),
+			)
+			cmdErr := executor.RunScript(
+				reqLogger,
+				cr,
+				cr.Namespace,
+				m.Pod,
+				containerID,
+				executor.AppContainerName,
+				"app config",
+				strings.NewReader(cmd),
+			)
+			if cmdErr != nil {
+				shared.LogInfo(
+					reqLogger,
+					cr,
+					shared.EventReasonCluster,
+					fmt.Sprintf("Exited with errors: %s", cmdErr.Error()),
+				)
+			}
+
 			m.StateDetail.LastConfigDataGeneration = cr.Status.SpecGenerationToProcess
 		}(member)
 	}
@@ -371,6 +430,13 @@ func handleCreatingMembers(
 	allRoles []*roleInfo,
 	configmetaGenerator func(string) string,
 ) {
+
+	shared.LogInfo(
+		reqLogger,
+		cr,
+		shared.EventReasonCluster,
+		"In handleCreatingMembers",
+	)
 
 	creating := role.membersByState[memberCreating]
 

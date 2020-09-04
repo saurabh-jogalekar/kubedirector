@@ -81,6 +81,7 @@ const (
 	ln -sf /usr/bin/configcli /usr/bin/bd_vcli`
 	configcliTestFile  = "/usr/bin/configcli"
 	appPrepStartscript = "/opt/guestconfig/*/startscript"
+	appTestScript      = "/opt/guestconfig/*/testscript"
 	appPrepInitCmd     = `cd /opt/guestconfig/ &&
 	rm -rf /opt/guestconfig/* &&
 	curl -L {{APP_CONFIG_URL}} -o appconfig.tgz &&
@@ -88,11 +89,22 @@ const (
 	chmod +x ` + appPrepStartscript + ` &&
 	rm -rf /opt/guestconfig/appconfig.tgz`
 	appPrepConfigStatus = "/opt/guestconfig/configure.status"
+	appPrepTestStatus   = "/opt/guestconfig/test.status"
 	appPrepConfigRunCmd = `rm -f /opt/guestconfig/configure.* &&
 	echo -n %s= > ` + appPrepConfigStatus + ` &&
 	nohup sh -c "` + appPrepStartscript + ` --configure;
 	echo -n $? >> ` + appPrepConfigStatus + `" > /opt/guestconfig/configure.stdout  
 	2> /opt/guestconfig/configure.stderr  &`
+	appPrepConfigRunCmdTest = `rm -f /opt/guestconfig/configure.* &&
+	echo -n %s= > ` + appPrepConfigStatus + ` &&
+	nohup sh -c "` + appPrepStartscript + ` --reconnect;
+	echo -n $? >> ` + appPrepConfigStatus + `" > /opt/guestconfig/configure.stdout  
+	2> /opt/guestconfig/configure.stderr  &`
+	// appPrepConfigRunCmdTest = `rm -f /opt/guestconfig/test.* &&
+	// echo -n %s= > ` + appPrepTestStatus + ` &&
+	// nohup sh -c "` + appTestScript + ` --configure;
+	// echo -n $? >> ` + appPrepTestStatus + `" > /opt/guestconfig/test.stdout
+	// 2> /opt/guestconfig/test.stderr  &`
 	fileInjectionCommand = `mkdir -p %s && cd %s &&
 	curl -L %s -o %s`
 )
